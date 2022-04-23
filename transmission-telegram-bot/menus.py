@@ -1,11 +1,9 @@
 import base64
 from typing import Tuple
-
 import telegram
 import transmission_rpc as trans
 import transmission_rpc.utils as trans_utils
 from telegram.utils.helpers import escape_markdown
-
 from . import config, utils
 
 STATUS_LIST = {
@@ -72,7 +70,7 @@ def add_torrent_with_file(file: bytes) -> trans.Torrent:
     return transClient.add_torrent(encoded_file, paused=True)
 
 
-def add_torrent_with_magnet(url: str) -> trans.Torrent:
+def add_torrent_with_url(url: str) -> trans.Torrent:
     return transClient.add_torrent(url, paused=True)
 
 

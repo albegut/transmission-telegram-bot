@@ -178,17 +178,16 @@ def torrent_file_handler(update: telegram.Update, context: CallbackContext[Any, 
         text=text, reply_markup=reply_markup, parse_mode="MarkdownV2"
     )
 
-
 @utils.whitelist
-def magnet_url_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
-    magnet_url: str = update.message.text
-    torrent = menus.add_torrent_with_magnet(magnet_url)
+def url_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
+    url: str = update.message.text
+    logging.warning(url)
+    torrent = menus.add_torrent_with_url(url)
     update.message.reply_text("Torrent added", quote=True)
     text, reply_markup = menus.add_menu(torrent.id)
     update.message.reply_text(
         text=text, reply_markup=reply_markup, parse_mode="MarkdownV2"
     )
-
 
 @utils.whitelist
 def torrent_adding_actions(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
@@ -329,7 +328,10 @@ def run():
         MessageHandler(Filters.document.file_extension("torrent"), torrent_file_handler)
     )
     updater.dispatcher.add_handler(
-        MessageHandler(Filters.regex(r"\Amagnet:\?xt=urn:btih:.*"), magnet_url_handler)
+        MessageHandler(Filters.regex(r"\Amagnet:\?xt=urn:btih:.*"), url_handler)
+    )
+    updater.dispatcher.add_handler(
+        MessageHandler(Filters.regex(".*\.torrent"), url_handler)
     )
     updater.dispatcher.add_handler(CommandHandler("start", start))
     updater.dispatcher.add_handler(CommandHandler("menu", start))

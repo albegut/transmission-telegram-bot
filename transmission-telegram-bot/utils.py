@@ -6,14 +6,11 @@ from typing import TYPE_CHECKING, Any, Callable
 
 import pyngrok.ngrok
 import transmission_rpc as trans
-
-if TYPE_CHECKING:
-    from telegram.update import Update
-    from telegram.ext import (
+from telegram.ext import (
         CallbackContext,
-        Updater,
+        Updater
     )
-
+from telegram.update import Update
 from . import config
 
 logger = logging.getLogger(__name__)

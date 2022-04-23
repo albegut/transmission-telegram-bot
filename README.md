@@ -18,7 +18,7 @@ Just fill in bot.env file and run <code>docker-compose up -d</code>
 
 To run without docker clone repository and run these commands:
 * <code>pip3 install -r requirements.txt</code>
-* <code>python3 -m transmision-telegram-bot</code>
+* <code>python3 -m transmission-telegram-bot</code>
 
 ## TO DO list:
 * Status notifications
