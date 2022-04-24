@@ -5,6 +5,7 @@ import transmission_rpc as trans
 import transmission_rpc.utils as trans_utils
 from telegram.utils.helpers import escape_markdown
 from . import config, utils
+import logging
 
 STATUS_LIST = {
     "downloading": "⏬",
@@ -70,8 +71,9 @@ def add_torrent_with_file(file: bytes) -> trans.Torrent:
     return transClient.add_torrent(encoded_file, paused=True)
 
 
-def add_torrent_with_url(url: str) -> trans.Torrent:
-    return transClient.add_torrent(url, paused=True)
+def add_torrent_with_url(url: str, subfolder:str) -> trans.Torrent:
+    current = transClient.get_session().download_dir
+    return transClient.add_torrent(url, paused=True, download_dir=f"{current}/{subfolder}")
 
 
 def menu() -> str:
@@ -83,6 +85,29 @@ def menu() -> str:
     )
     return text
 
+def season_menu(tvShow:str, prevChar:None) -> Tuple[str, telegram.InlineKeyboardMarkup]:
+    if(prevChar == None):
+        prevChar = ""
+        text = f" Select {tvShow} season\n"
+    else:
+        text = f" {tvShow} {prevChar} season\n"
+    numbers = "1","2","3","4","5","6","7","8","9",
+    column = 0
+    row = 0
+    keyboard: list[list[telegram.InlineKeyboardButton]] = [[]]
+    keyboard[row].append(telegram.InlineKeyboardButton(text="🔚 Finish", callback_data=f"finishSeason_{tvShow}_{prevChar}"))
+    keyboard.append([])
+    row +=1
+    for number in numbers:
+        if(column == 3):
+            keyboard.append([])
+            row +=1
+            column = 0
+        keyboard[row].append(telegram.InlineKeyboardButton(text=f"{number}", callback_data=f"addSeson_{tvShow}_{prevChar}{number}"))
+        column +=1
+
+    reply_markup = telegram.InlineKeyboardMarkup(keyboard)
+    return text, reply_markup
 
 def add_torrent() -> str:
     return "Just send torrent file or magnet url to the bot"
@@ -375,6 +400,42 @@ def delete_menu(torrent_id: int) -> Tuple[str, telegram.InlineKeyboardMarkup]:
     )
     return text, reply_markup
 
+def add_TVShow_FolderMenu()-> Tuple[str, telegram.InlineKeyboardMarkup]:
+    text = "Select tv show\n"
+    folders = utils.listdirs(transClient.get_session().download_dir)
+    column = 0
+    row = 0
+    keyboard: list[list[telegram.InlineKeyboardButton]] = [[]]
+    keyboard[row].append(telegram.InlineKeyboardButton(text="🆕 New TV Show", callback_data=f"TvNewShowfolder_"))
+    keyboard.append([])
+    row +=1
+    for folder in folders:
+        if(column == 3):
+            keyboard.append([])
+            row +=1
+        keyboard[row].append(telegram.InlineKeyboardButton(text=f"📁 {folder}", callback_data=f"TvShowfolder_{folder}"))
+        column +=1
+
+    reply_markup = telegram.InlineKeyboardMarkup(keyboard)
+    return text, reply_markup
+
+def add_FirstStep() -> Tuple[str, telegram.InlineKeyboardMarkup]:
+    text = "Select type\n"
+    reply_markup = telegram.InlineKeyboardMarkup(
+        [
+            [
+                telegram.InlineKeyboardButton(
+                    "📼 Film",
+                    callback_data=f"isFilm_",
+                ),
+                telegram.InlineKeyboardButton(
+                    "📺 Tv-Show",
+                    callback_data=f"isTvShow_",
+                ),
+            ],
+        ]
+    )
+    return text, reply_markup
 
 def add_menu(torrent_id: int) -> Tuple[str, telegram.InlineKeyboardMarkup]:
     torrent = transClient.get_torrent(torrent_id)

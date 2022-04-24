@@ -3,7 +3,7 @@ import time
 import logging
 from functools import wraps
 from typing import TYPE_CHECKING, Any, Callable
-
+import os 
 import pyngrok.ngrok
 import transmission_rpc as trans
 from telegram.ext import (
@@ -104,6 +104,8 @@ def file_progress(file: trans.File) -> float:
     except ZeroDivisionError:
         return 0.0
 
+def listdirs(folder):
+    return [d for d in os.listdir(folder) if os.path.isdir(os.path.join(folder, d))]
 
 def whitelist(func: Callable[[Any, Any], Any]):
     @wraps(func)

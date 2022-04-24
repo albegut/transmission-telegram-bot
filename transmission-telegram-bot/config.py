@@ -7,6 +7,8 @@ load_dotenv()
 
 allowed_updaters = ["ngrok", "webserver", "polling"]
 
+FILMS_FOLDER = os.environ["TRANSSMISION_FILMS_FOLDER"]
+TV_FOLDER = os.environ["TRANSSMISION_TV_FOLDER"]
 TOKEN = os.environ["TELEGRAM_TOKEN"]
 PORT_NGROK_TUNNEL = 5000
 WEBHOOK_PORT = 8080

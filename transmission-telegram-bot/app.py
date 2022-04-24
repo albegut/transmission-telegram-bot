@@ -1,7 +1,7 @@
 import logging
+from pickle import TRUE
 import time
 from typing import Any
-
 import telegram
 from telegram.ext import (
     CallbackContext,
@@ -180,14 +180,74 @@ def torrent_file_handler(update: telegram.Update, context: CallbackContext[Any, 
 
 @utils.whitelist
 def url_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
-    url: str = update.message.text
-    logging.warning(url)
-    torrent = menus.add_torrent_with_url(url)
-    update.message.reply_text("Torrent added", quote=True)
-    text, reply_markup = menus.add_menu(torrent.id)
+    text, reply_markup = menus.add_FirstStep()
     update.message.reply_text(
         text=text, reply_markup=reply_markup, parse_mode="MarkdownV2"
     )
+    f = open(f"urlinfo_{update.message.from_user.id}.txt", "w")
+    f.write(update.message.text)
+    f.close()
+
+@utils.whitelist
+def tvShow_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
+    #msg = context.bot.send_message(update.callback_query.message.chat.id, 'Enter tmfs separated with space: ')
+    #context.bot.register_next_step_handler(msg,update.callback_query.from_user.id, tvShow_handler_nextStep)
+    query: telegram.CallbackQuery = update.callback_query
+    text, reply_markup = menus.add_TVShow_FolderMenu()
+    query.edit_message_text(
+        text=text, reply_markup=reply_markup, parse_mode="MarkdownV2"
+    )
+
+@utils.whitelist
+def tvShow_folder_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
+    query: telegram.CallbackQuery = update.callback_query
+    callback: list[str] = query.data.split("_")
+    text, reply_markup = menus.season_menu(callback[1],None)
+    query.edit_message_text(
+        text=text, reply_markup=reply_markup, parse_mode="MarkdownV2"
+    )
+
+@utils.whitelist
+def tvShow_seasonfolder_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
+    query: telegram.CallbackQuery = update.callback_query
+    callback: list[str] = query.data.split("_")
+    text, reply_markup = menus.season_menu(callback[1],callback[2])
+    query.edit_message_text(
+        text=text, reply_markup=reply_markup, parse_mode="MarkdownV2"
+    )
+
+@utils.whitelist
+def tvShow_finish_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
+    query: telegram.CallbackQuery = update.callback_query
+    callback: list[str] = query.data.split("_")
+    f = open(f"urlinfo_{update.callback_query.from_user.id}.txt", "r")
+    torrent = menus.add_torrent_with_url(f.read(), f"{config.TV_FOLDER}/{callback[1]}/T{callback[2]}")
+    text, reply_markup = menus.add_menu(torrent.id)
+    query.edit_message_text(
+        text=text, reply_markup=reply_markup, parse_mode="MarkdownV2"
+    )
+    
+
+@utils.whitelist
+def tvShow_handler_nextStep(msg: any, userId:any,context: CallbackContext[Any, Any, Any]):
+    logging.warning(msg)
+    f = open(f"urlinfo_{userId}.txt", "r")
+    torrent = menus.add_torrent_with_url(f.read(), config.TV_FOLDER)
+    text, reply_markup = menus.add_menu(torrent.id)
+    #query.edit_message_text(
+    #    text=text, reply_markup=reply_markup, parse_mode="MarkdownV2"
+    #)
+
+@utils.whitelist
+def film_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
+    query: telegram.CallbackQuery = update.callback_query
+    f = open(f"urlinfo_{update.callback_query.from_user.id}.txt", "r")
+    torrent = menus.add_torrent_with_url(f.read(), config.FILMS_FOLDER)
+    text, reply_markup = menus.add_menu(torrent.id)
+    query.edit_message_text(
+        text=text, reply_markup=reply_markup, parse_mode="MarkdownV2"
+    )
+      
 
 @utils.whitelist
 def torrent_adding_actions(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
@@ -311,6 +371,7 @@ def change_server_inline(update: telegram.Update, context: CallbackContext[Any, 
 @utils.whitelist
 def error_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
     text = "Something went wrong"
+    logging.error('Update "%s" caused error "%s"', update, context.error)
     if update.callback_query:
         query: telegram.CallbackQuery = update.callback_query
         query.edit_message_text(text=text, parse_mode="MarkdownV2")
@@ -328,10 +389,10 @@ def run():
         MessageHandler(Filters.document.file_extension("torrent"), torrent_file_handler)
     )
     updater.dispatcher.add_handler(
-        MessageHandler(Filters.regex(r"\Amagnet:\?xt=urn:btih:.*"), url_handler)
+        MessageHandler(Filters.regex(r"\Amagnet:\?xt=urn:btih:.*"), url_handler, pass_user_data=TRUE)
     )
     updater.dispatcher.add_handler(
-        MessageHandler(Filters.regex(".*\.torrent"), url_handler)
+        MessageHandler(Filters.regex(".*\.torrent"), url_handler, pass_user_data=TRUE)
     )
     updater.dispatcher.add_handler(CommandHandler("start", start))
     updater.dispatcher.add_handler(CommandHandler("menu", start))
@@ -378,6 +439,22 @@ def run():
     updater.dispatcher.add_handler(
         CallbackQueryHandler(torrent_menu_inline, pattern="torrent\\_*")
     )
+    updater.dispatcher.add_handler(
+        CallbackQueryHandler(tvShow_handler, pattern="isTvShow\\_*", pass_chat_data=True)
+    )
+    updater.dispatcher.add_handler(
+        CallbackQueryHandler(film_handler, pattern="isFilm\\_*", pass_user_data=True)
+    )
+    updater.dispatcher.add_handler(
+        CallbackQueryHandler(tvShow_folder_handler, pattern="TvShowfolder\\_*", pass_user_data=True)
+    )
+    updater.dispatcher.add_handler(
+        CallbackQueryHandler(tvShow_seasonfolder_handler, pattern="addSeson\\_*", pass_user_data=True)
+    )
+    updater.dispatcher.add_handler(
+        CallbackQueryHandler(tvShow_finish_handler, pattern="finishSeason\\_*", pass_user_data=True)
+    )
+    
     updater.bot.set_my_commands(
         [
             ("start", "Open menu with commands"),
