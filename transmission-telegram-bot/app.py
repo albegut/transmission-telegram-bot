@@ -1,40 +1,43 @@
 import logging
 import os
-from pickle import TRUE
 import time
 from typing import Any
-import telegram
+from telegram import CallbackQuery, ReplyKeyboardRemove, Update, error
 from telegram.ext import (
     CallbackContext,
     CallbackQueryHandler,
+    ConversationHandler,
     CommandHandler,
     MessageHandler,
     Updater,
 )
 from telegram.ext.filters import Filters
-
 from . import config, menus, utils
 
+state = None
+
+ADDINGFOLDER = 1
+
 @utils.whitelist
-def start(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
+def start(update: Update, context: CallbackContext[Any, Any, Any]):
     text = menus.menu()
-    update.message.reply_text(text, reply_markup=telegram.ReplyKeyboardRemove())
+    update.message.reply_text(text, reply_markup=ReplyKeyboardRemove())
 
 
 @utils.whitelist
-def add(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
+def add(update: Update, context: CallbackContext[Any, Any, Any]):
     text = menus.add_torrent()
     update.message.reply_text(text)
 
 
 @utils.whitelist
-def memory(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
+def memory(update: Update, context: CallbackContext[Any, Any, Any]):
     formatted_memory = menus.get_memory()
     update.message.reply_text(formatted_memory)
 
 
 @utils.whitelist
-def get_torrents_command(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
+def get_torrents_command(update: Update, context: CallbackContext[Any, Any, Any]):
     torrent_list, keyboard = menus.get_torrents()
     update.message.reply_text(
         torrent_list, reply_markup=keyboard, parse_mode="MarkdownV2"
@@ -42,7 +45,7 @@ def get_torrents_command(update: telegram.Update, context: CallbackContext[Any, 
 
 
 @utils.whitelist
-def get_torrents_inline(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
+def get_torrents_inline(update: Update, context: CallbackContext[Any, Any, Any]):
     query = update.callback_query
     callback = query.data.split("_")
     start_point = int(callback[1])
@@ -53,7 +56,7 @@ def get_torrents_inline(update: telegram.Update, context: CallbackContext[Any, A
                 text=torrent_list, reply_markup=keyboard, parse_mode="MarkdownV2"
             )
             query.answer(text="Reloaded")
-        except telegram.error.BadRequest:
+        except error.BadRequest:
             query.answer(text="Nothing to reload")
     else:
         query.answer()
@@ -63,7 +66,7 @@ def get_torrents_inline(update: telegram.Update, context: CallbackContext[Any, A
 
 
 @utils.whitelist
-def torrent_menu_inline(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
+def torrent_menu_inline(update: Update, context: CallbackContext[Any, Any, Any]):
     query = update.callback_query
     callback = query.data.split("_")
     torrent_id = int(callback[1])
@@ -95,7 +98,7 @@ def torrent_menu_inline(update: telegram.Update, context: CallbackContext[Any, A
                     text=text, reply_markup=reply_markup, parse_mode="MarkdownV2"
                 )
                 query.answer(text="Reloaded")
-            except telegram.error.BadRequest:
+            except error.BadRequest:
                 query.answer(text="Nothing to reload")
         else:
             query.answer()
@@ -105,7 +108,7 @@ def torrent_menu_inline(update: telegram.Update, context: CallbackContext[Any, A
 
 
 @utils.whitelist
-def torrent_files_inline(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
+def torrent_files_inline(update: Update, context: CallbackContext[Any, Any, Any]):
     query = update.callback_query
     callback = query.data.split("_")
     torrent_id = int(callback[1])
@@ -124,7 +127,7 @@ def torrent_files_inline(update: telegram.Update, context: CallbackContext[Any, 
                     text=text, reply_markup=reply_markup, parse_mode="MarkdownV2"
                 )
                 query.answer(text="Reloaded")
-            except telegram.error.BadRequest:
+            except error.BadRequest:
                 query.answer(text="Nothing to reload")
         else:
             query.answer()
@@ -134,8 +137,8 @@ def torrent_files_inline(update: telegram.Update, context: CallbackContext[Any, 
 
 
 @utils.whitelist
-def delete_torrent_inline(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
-    query: telegram.CallbackQuery = update.callback_query
+def delete_torrent_inline(update: Update, context: CallbackContext[Any, Any, Any]):
+    query: CallbackQuery = update.callback_query
     callback: list[str] = query.data.split("_")
     torrent_id = int(callback[1])
     try:
@@ -152,8 +155,8 @@ def delete_torrent_inline(update: telegram.Update, context: CallbackContext[Any,
 
 
 @utils.whitelist
-def delete_torrent_action_inline(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
-    query: telegram.CallbackQuery = update.callback_query
+def delete_torrent_action_inline(update: Update, context: CallbackContext[Any, Any, Any]):
+    query: CallbackQuery = update.callback_query
     callback: list[str] = query.data.split("_")
     torrent_id = int(callback[1])
     if len(callback) == 3 and callback[2] == "data":
@@ -169,7 +172,7 @@ def delete_torrent_action_inline(update: telegram.Update, context: CallbackConte
 
 
 @utils.whitelist
-def torrent_file_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
+def torrent_file_handler(update: Update, context: CallbackContext[Any, Any, Any]):
     file_bytes = context.bot.get_file(update.message.document).download_as_bytearray()
     torrent = menus.add_torrent_with_file(file_bytes)
     update.message.reply_text("Torrent added", quote=True)
@@ -179,7 +182,7 @@ def torrent_file_handler(update: telegram.Update, context: CallbackContext[Any, 
     )
 
 @utils.whitelist
-def url_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
+def url_handler(update: Update, context: CallbackContext[Any, Any, Any]):
     text, reply_markup = menus.add_FirstStep()
     update.message.reply_text(
         text=text, reply_markup=reply_markup, parse_mode="MarkdownV2"
@@ -189,18 +192,20 @@ def url_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any]
     f.close()
 
 @utils.whitelist
-def tvShow_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
+def tvShow_handler(update: Update, context: CallbackContext[Any, Any, Any]):
     #msg = context.bot.send_message(update.callback_query.message.chat.id, 'Enter tmfs separated with space: ')
     #context.bot.register_next_step_handler(msg,update.callback_query.from_user.id, tvShow_handler_nextStep)
-    query: telegram.CallbackQuery = update.callback_query
+    query: CallbackQuery = update.callback_query
     text, reply_markup = menus.add_TVShow_FolderMenu()
+    global state 
+    state = ADDINGFOLDER
     query.edit_message_text(
         text=text, reply_markup=reply_markup, parse_mode="MarkdownV2"
     )
 
 @utils.whitelist
-def tvShow_folder_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
-    query: telegram.CallbackQuery = update.callback_query
+def tvShow_folder_handler(update: Update, context: CallbackContext[Any, Any, Any]):
+    query: CallbackQuery = update.callback_query
     callback: list[str] = query.data.split("_")
     text, reply_markup = menus.season_menu(callback[1],None)
     query.edit_message_text(
@@ -208,8 +213,8 @@ def tvShow_folder_handler(update: telegram.Update, context: CallbackContext[Any,
     )
 
 @utils.whitelist
-def tvShow_seasonfolder_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
-    query: telegram.CallbackQuery = update.callback_query
+def tvShow_seasonfolder_handler(update: Update, context: CallbackContext[Any, Any, Any]):
+    query: CallbackQuery = update.callback_query
     callback: list[str] = query.data.split("_")
     text, reply_markup = menus.season_menu(callback[1],callback[2])
     query.edit_message_text(
@@ -217,15 +222,25 @@ def tvShow_seasonfolder_handler(update: telegram.Update, context: CallbackContex
     )
 
 @utils.whitelist
-def newTvShow_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
-    query: telegram.CallbackQuery = update.callback_query
+def newTvShow_handler(update: Update, context: CallbackContext[Any, Any, Any]):
+    query: CallbackQuery = update.callback_query
     query.edit_message_text(
         text="Enter new tv show name", parse_mode="MarkdownV2"
     )
 
 @utils.whitelist
-def tvShow_finish_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
-    query: telegram.CallbackQuery = update.callback_query
+def newTvShow_Added(update: Update, context: CallbackContext[Any, Any, Any]):
+    global state
+    if(state == ADDINGFOLDER):
+        state = None
+        text, reply_markup = menus.season_menu(update.message.text,None)
+        update.message.reply_text(
+            text=text, reply_markup=reply_markup, parse_mode="MarkdownV2"
+        )
+
+@utils.whitelist
+def tvShow_finish_handler(update: Update, context: CallbackContext[Any, Any, Any]):
+    query: CallbackQuery = update.callback_query
     callback: list[str] = query.data.split("_")
     f = open(f"urlinfo_{update.callback_query.from_user.id}.txt", "r")
     torrent = menus.add_torrent_with_url(f.read(), f"{config.TV_FOLDER}/{callback[1]}/T{callback[2]}")
@@ -246,8 +261,8 @@ def tvShow_handler_nextStep(msg: any, userId:any,context: CallbackContext[Any, A
     #)
 
 @utils.whitelist
-def film_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
-    query: telegram.CallbackQuery = update.callback_query
+def film_handler(update: Update, context: CallbackContext[Any, Any, Any]):
+    query: CallbackQuery = update.callback_query
     f = open(f"urlinfo_{update.callback_query.from_user.id}.txt", "r")
     torrent = menus.add_torrent_with_url(f.read(), config.FILMS_FOLDER)
     text, reply_markup = menus.add_menu(torrent.id)
@@ -257,8 +272,8 @@ def film_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any
       
 
 @utils.whitelist
-def torrent_adding_actions(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
-    query: telegram.CallbackQuery = update.callback_query
+def torrent_adding_actions(update: Update, context: CallbackContext[Any, Any, Any]):
+    query: CallbackQuery = update.callback_query
     callback: list[str] = query.data.split("_")
     if len(callback) == 3:
         torrent_id = int(callback[1])
@@ -276,8 +291,8 @@ def torrent_adding_actions(update: telegram.Update, context: CallbackContext[Any
 
 
 @utils.whitelist
-def torrent_adding(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
-    query: telegram.CallbackQuery = update.callback_query
+def torrent_adding(update: Update, context: CallbackContext[Any, Any, Any]):
+    query: CallbackQuery = update.callback_query
     callback: list[str] = query.data.split("_")
     torrent_id = int(callback[1])
     text, reply_markup = menus.add_menu(torrent_id)
@@ -287,8 +302,8 @@ def torrent_adding(update: telegram.Update, context: CallbackContext[Any, Any, A
 
 
 @utils.whitelist
-def edit_file(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
-    query: telegram.CallbackQuery = update.callback_query
+def edit_file(update: Update, context: CallbackContext[Any, Any, Any]):
+    query: CallbackQuery = update.callback_query
     callback: list[str] = query.data.split("_")
     torrent_id = int(callback[1])
     file_id = int(callback[2])
@@ -302,8 +317,8 @@ def edit_file(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
 
 
 @utils.whitelist
-def select_for_download(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
-    query: telegram.CallbackQuery = update.callback_query
+def select_for_download(update: Update, context: CallbackContext[Any, Any, Any]):
+    query: CallbackQuery = update.callback_query
     callback: list[str] = query.data.split("_")
     torrent_id = int(callback[1])
     text, reply_markup = menus.select_files_add_menu(torrent_id)
@@ -314,8 +329,8 @@ def select_for_download(update: telegram.Update, context: CallbackContext[Any, A
 
 
 @utils.whitelist
-def select_file(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
-    query: telegram.CallbackQuery = update.callback_query
+def select_file(update: Update, context: CallbackContext[Any, Any, Any]):
+    query: CallbackQuery = update.callback_query
     callback: list[str] = query.data.split("_")
     torrent_id = int(callback[1])
     file_id = int(callback[2])
@@ -329,14 +344,14 @@ def select_file(update: telegram.Update, context: CallbackContext[Any, Any, Any]
 
 
 @utils.whitelist
-def settings_menu_command(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
+def settings_menu_command(update: Update, context: CallbackContext[Any, Any, Any]):
     text, reply_markup = menus.settings_menu()
     update.message.reply_text(
         text=text, reply_markup=reply_markup, parse_mode="MarkdownV2"
     )
 
 @utils.whitelist
-def restart(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
+def restart(update: Update, context: CallbackContext[Any, Any, Any]):
     os.system("sudo systemctl restart transmission-daemon")
     os.system("sudo systemctl restart smbd.service")
     update.message.reply_text(
@@ -346,8 +361,8 @@ def restart(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
 
 
 @utils.whitelist
-def settings_menu_inline(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
-    query: telegram.CallbackQuery = update.callback_query
+def settings_menu_inline(update: Update, context: CallbackContext[Any, Any, Any]):
+    query: CallbackQuery = update.callback_query
     text, reply_markup = menus.settings_menu()
     query.answer()
     query.edit_message_text(
@@ -356,8 +371,8 @@ def settings_menu_inline(update: telegram.Update, context: CallbackContext[Any, 
 
 
 @utils.whitelist
-def change_server_menu_inline(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
-    query: telegram.CallbackQuery = update.callback_query
+def change_server_menu_inline(update: Update, context: CallbackContext[Any, Any, Any]):
+    query: CallbackQuery = update.callback_query
     callback: list[str] = query.data.split("_")
     text, reply_markup = menus.change_server_menu(int(callback[1]))
     query.answer()
@@ -367,8 +382,8 @@ def change_server_menu_inline(update: telegram.Update, context: CallbackContext[
 
 
 @utils.whitelist
-def change_server_inline(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
-    query: telegram.CallbackQuery = update.callback_query
+def change_server_inline(update: Update, context: CallbackContext[Any, Any, Any]):
+    query: CallbackQuery = update.callback_query
     callback: list[str] = query.data.split("_")
     success = menus.change_server(int(callback[1]))
     text, reply_markup = menus.change_server_menu(int(callback[2]))
@@ -380,19 +395,27 @@ def change_server_inline(update: telegram.Update, context: CallbackContext[Any, 
         query.edit_message_text(
             text=text, reply_markup=reply_markup, parse_mode="MarkdownV2"
         )
-    except telegram.error.BadRequest:
+    except error.BadRequest:
         pass
 
 
 @utils.whitelist
-def error_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
+def error_handler(update: Update, context: CallbackContext[Any, Any, Any]):
     text = "Something went wrong"
     logging.error('Update "%s" caused error "%s"', update, context.error)
     if update.callback_query:
-        query: telegram.CallbackQuery = update.callback_query
+        query: CallbackQuery = update.callback_query
         query.edit_message_text(text=text, parse_mode="MarkdownV2")
     else:
         update.message.reply_text(text)
+
+def cancel(update:  Update, context: CallbackContext) -> int:
+    """Cancels and ends the conversation."""
+    update.message.reply_text(
+        'Bye! I hope we can talk again some day.', reply_markup=ReplyKeyboardRemove()
+    )
+
+    return ConversationHandler.END
 
 
 def run():
@@ -405,10 +428,13 @@ def run():
         MessageHandler(Filters.document.file_extension("torrent"), torrent_file_handler)
     )
     updater.dispatcher.add_handler(
-        MessageHandler(Filters.regex(r"\Amagnet:\?xt=urn:btih:.*"), url_handler, pass_user_data=TRUE)
+        MessageHandler(Filters.regex(r"\Amagnet:\?xt=urn:btih:.*"), url_handler, pass_user_data=True)
     )
     updater.dispatcher.add_handler(
-        MessageHandler(Filters.regex(".*\.torrent"), url_handler, pass_user_data=TRUE)
+        MessageHandler(Filters.regex(".*\.torrent"), url_handler, pass_user_data=True)
+    )
+    updater.dispatcher.add_handler(
+        MessageHandler(Filters.text & ~Filters.command, newTvShow_Added, pass_user_data=True)
     )
     updater.dispatcher.add_handler(CommandHandler("start", start))
     updater.dispatcher.add_handler(CommandHandler("menu", start))
@@ -417,6 +443,7 @@ def run():
     updater.dispatcher.add_handler(CommandHandler("torrents", get_torrents_command))
     updater.dispatcher.add_handler(CommandHandler("settings", settings_menu_command))
     updater.dispatcher.add_handler(CommandHandler("restart", restart))
+
     updater.dispatcher.add_handler(
         CallbackQueryHandler(settings_menu_inline, pattern="settings")
     )
@@ -466,7 +493,7 @@ def run():
         CallbackQueryHandler(tvShow_folder_handler, pattern="TvShowfolder\\_*", pass_user_data=True)
     )
     updater.dispatcher.add_handler(
-        CallbackQueryHandler(tvShow_seasonfolder_handler, pattern="addSeson\\_*", pass_user_data=True)
+        CallbackQueryHandler(tvShow_seasonfolder_handler, pattern="addSeason\\_*", pass_user_data=True)
     )
     updater.dispatcher.add_handler(
         CallbackQueryHandler(tvShow_finish_handler, pattern="finishSeason\\_*", pass_user_data=True)

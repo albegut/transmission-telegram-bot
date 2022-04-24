@@ -104,7 +104,7 @@ def season_menu(tvShow:str, prevChar:None) -> Tuple[str, telegram.InlineKeyboard
             keyboard.append([])
             row +=1
             column = 0
-        keyboard[row].append(telegram.InlineKeyboardButton(text=f"{number}", callback_data=f"addSeson_{tvShow}_{prevChar}{number}"))
+        keyboard[row].append(telegram.InlineKeyboardButton(text=f"{number}", callback_data=f"addSeason_{tvShow}_{prevChar}{number}"))
         column +=1
 
     reply_markup = telegram.InlineKeyboardMarkup(keyboard)
@@ -403,7 +403,8 @@ def delete_menu(torrent_id: int) -> Tuple[str, telegram.InlineKeyboardMarkup]:
 
 def add_TVShow_FolderMenu()-> Tuple[str, telegram.InlineKeyboardMarkup]:
     text = "Select tv show\n"
-    folders = utils.listdirs(f"{transClient.get_session().download_dir}/{config.TV_FOLDER}")
+    #folders = utils.listdirs(f"{transClient.get_session().download_dir}/{config.TV_FOLDER}")
+    folders = utils.listdirs(f"./")
     column = 0
     row = 0
     keyboard: list[list[telegram.InlineKeyboardButton]] = [[]]
