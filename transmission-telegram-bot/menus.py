@@ -413,6 +413,7 @@ def add_TVShow_FolderMenu()-> Tuple[str, telegram.InlineKeyboardMarkup]:
         if(column == 3):
             keyboard.append([])
             row +=1
+            column = 0
         keyboard[row].append(telegram.InlineKeyboardButton(text=f"📁 {folder}", callback_data=f"TvShowfolder_{folder}"))
         column +=1
 
