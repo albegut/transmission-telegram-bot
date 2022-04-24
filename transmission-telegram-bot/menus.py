@@ -81,6 +81,7 @@ def menu() -> str:
         "List of available commands:\n"
         "/torrents - List all torrents\n"
         "/memory - Available memory\n"
+        "/restart - Restart services\n"
         "/add - Add torrent"
     )
     return text

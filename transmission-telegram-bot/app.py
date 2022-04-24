@@ -1,4 +1,5 @@
 import logging
+import os
 from pickle import TRUE
 import time
 from typing import Any
@@ -13,7 +14,6 @@ from telegram.ext import (
 from telegram.ext.filters import Filters
 
 from . import config, menus, utils
-
 
 @utils.whitelist
 def start(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
@@ -217,6 +217,13 @@ def tvShow_seasonfolder_handler(update: telegram.Update, context: CallbackContex
     )
 
 @utils.whitelist
+def newTvShow_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
+    query: telegram.CallbackQuery = update.callback_query
+    query.edit_message_text(
+        text="Enter new tv show name", parse_mode="MarkdownV2"
+    )
+
+@utils.whitelist
 def tvShow_finish_handler(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
     query: telegram.CallbackQuery = update.callback_query
     callback: list[str] = query.data.split("_")
@@ -328,6 +335,15 @@ def settings_menu_command(update: telegram.Update, context: CallbackContext[Any,
         text=text, reply_markup=reply_markup, parse_mode="MarkdownV2"
     )
 
+@utils.whitelist
+def restart(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
+    os.system("sudo systemctl restart transmission-daemon")
+    os.system("sudo systemctl restart smbd.service")
+    update.message.reply_text(
+        text="✅ Services restarted", parse_mode="MarkdownV2"
+    )
+
+
 
 @utils.whitelist
 def settings_menu_inline(update: telegram.Update, context: CallbackContext[Any, Any, Any]):
@@ -400,6 +416,7 @@ def run():
     updater.dispatcher.add_handler(CommandHandler("memory", memory))
     updater.dispatcher.add_handler(CommandHandler("torrents", get_torrents_command))
     updater.dispatcher.add_handler(CommandHandler("settings", settings_menu_command))
+    updater.dispatcher.add_handler(CommandHandler("restart", restart))
     updater.dispatcher.add_handler(
         CallbackQueryHandler(settings_menu_inline, pattern="settings")
     )
@@ -454,6 +471,9 @@ def run():
     updater.dispatcher.add_handler(
         CallbackQueryHandler(tvShow_finish_handler, pattern="finishSeason\\_*", pass_user_data=True)
     )
+    updater.dispatcher.add_handler(
+        CallbackQueryHandler(newTvShow_handler, pattern="TvNewShowfolder\\_*", pass_user_data=True)
+    )
     
     updater.bot.set_my_commands(
         [
@@ -462,6 +482,7 @@ def run():
             ("torrents", "List all torrents"),
             ("memory", "Available memory"),
             ("add", "Add torrent"),
+            ("restart", "Restart raspberry services"),
             ("settings", "Bot settings"),
         ]
     )
