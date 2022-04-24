@@ -402,7 +402,7 @@ def delete_menu(torrent_id: int) -> Tuple[str, telegram.InlineKeyboardMarkup]:
 
 def add_TVShow_FolderMenu()-> Tuple[str, telegram.InlineKeyboardMarkup]:
     text = "Select tv show\n"
-    folders = utils.listdirs(transClient.get_session().download_dir)
+    folders = utils.listdirs(f"{transClient.get_session().download_dir}/{config.TV_FOLDER}")
     column = 0
     row = 0
     keyboard: list[list[telegram.InlineKeyboardButton]] = [[]]
